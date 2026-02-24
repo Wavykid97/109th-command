@@ -1,162 +1,157 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>109th Command Center</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-body { background:#0f172a; color:white; font-family:Arial; padding:20px;}
-.card { background:#1e293b; padding:20px; margin-bottom:20px; border-radius:8px;}
-button { padding:8px 15px; background:#3b82f6; border:none; color:white; cursor:pointer;}
-input, select { padding:8px; margin:5px 0; width:100%;}
-</style>
+  <title>109th Command Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      background-color: #0d1117;
+      color: #00ff88;
+      font-family: monospace;
+      text-align: center;
+    }
+
+    .container {
+      margin-top: 100px;
+    }
+
+    input {
+      padding: 10px;
+      margin: 5px;
+      background: #161b22;
+      border: 1px solid #00ff88;
+      color: #00ff88;
+    }
+
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      background: #00ff88;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    #dashboard {
+      display: none;
+    }
+
+    .panel {
+      border: 1px solid #00ff88;
+      padding: 20px;
+      margin: 20px;
+    }
+  </style>
 </head>
 <body>
 
-<h1>109th Division Command Center</h1>
+<div class="container" id="auth">
+  <h1>109th Military Command Login</h1>
 
-<div class="card" id="auth">
-<h3>Login / Register</h3>
-<input id="email" placeholder="Email">
-<input id="password" type="password" placeholder="Password">
-<button onclick="register()">Register</button>
-<button onclick="login()">Login</button>
+  <input type="email" id="email" placeholder="Officer Email"><br>
+  <input type="password" id="password" placeholder="Password"><br>
+
+  <button onclick="register()">Register</button>
+  <button onclick="login()">Login</button>
+
+  <p id="authMessage"></p>
 </div>
 
-<div id="dashboard" style="display:none;">
+<div id="dashboard">
+  <h1>109th Command Dashboard</h1>
+  <p id="welcome"></p>
 
-<div class="card">
-<h3>Member State</h3>
-<p id="state"></p>
-<select id="stateSelect">
-<option>Critical</option>
-<option>Stable</option>
-<option>Prosperous</option>
-</select>
-<button onclick="updateState()">Update (Admin Only)</button>
-</div>
+  <div class="panel">
+    <h2>DDR Calculator</h2>
+    <p>DDR is based on Member States.</p>
+    <input type="number" id="memberStates" placeholder="Enter Member States">
+    <button onclick="calculateDDR()">Calculate DDR</button>
+    <p id="ddrResult"></p>
+  </div>
 
-<div class="card">
-<h3>DDR Calculator</h3>
-<input id="damage" placeholder="Damage">
-<input id="deaths" placeholder="Deaths">
-<button onclick="calculateDDR()">Calculate</button>
-<p id="ddrResult"></p>
-</div>
-
-<div class="card">
-<h3>Officer Logs</h3>
-<input id="logInput" placeholder="Enter action">
-<button onclick="addLog()">Submit</button>
-<div id="logs"></div>
-</div>
-
-<button onclick="logout()">Logout</button>
+  <button onclick="logout()">Logout</button>
 </div>
 
 <script>
-const supabase = supabase.createClient(
-  "https://qyogptduwrzgywgfnfpc.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5b2dwdGR1d3J6Z3l3Z2ZuZnBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MzM5NjcsImV4cCI6MjA4NzUwOTk2N30.T6_V1LmAtOD9LejPTZH1i_yW8a-eKnTEl5BpufNB9nc.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5b2dwdGR1d3J6Z3l3Z2ZuZnBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MzM5NjcsImV4cCI6MjA4NzUwOTk2N30.T6_V1LmAtOD9LejPTZH1i_yW8a-eKnTEl5BpufNB9nc"
-);
+  // 🔥 PUT YOUR REAL VALUES HERE
+  const SUPABASE_URL = "https://qyogptduwrzgywgfnfpc.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5b2dwdGR1d3J6Z3l3Z2ZuZnBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MzM5NjcsImV4cCI6MjA4NzUwOTk2N30.T6_V1LmAtOD9LejPTZH1i_yW8a-eKnTEl5BpufNB9nc";
 
-let currentUser;
-let currentRole = "Officer";
-let multiplier = 0.5;
+  const supabaseClient = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY
+  );
 
-const multipliers = {
-  Critical: 0.5,
-  Stable: 0.65,
-  Prosperous: 0.75
-};
+  async function register() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
 
-async function register(){
-  const { data, error } = await supabase.auth.signUp({
-    email: email.value,
-    password: password.value
-  });
+    const { error } = await supabaseClient.auth.signUp({
+      email: email,
+      password: password
+    });
 
-  if(error){
-    alert(error.message);
-    return;
+    if (error) {
+      document.getElementById("authMessage").innerText = error.message;
+    } else {
+      document.getElementById("authMessage").innerText =
+        "Registered successfully. Now login.";
+    }
   }
 
-  const user = data.user;
+  async function login() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
 
-  // Insert into public.users table
-  await supabase.from("users").insert({
-    id: user.id,
-    role: "Officer"
-  });
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+      email: email,
+      password: password
+    });
 
-  alert("Registered successfully. Now login.");
-}
-
-async function login(){
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: email.value,
-    password: password.value
-  });
-  loadUser();
-}
-
-async function loadUser(){
-  const { data: { user } } = await supabase.auth.getUser();
-  currentUser = user;
-
-  document.getElementById("auth").style.display="none";
-  document.getElementById("dashboard").style.display="block";
-
-  const { data } = await supabase.from("users").select("*").eq("id", user.id);
-  if(data.length > 0) currentRole = data[0].role;
-
-  loadState();
-  loadLogs();
-}
-
-async function loadState(){
-  const { data } = await supabase.from("settings").select("*").eq("id",1);
-  document.getElementById("state").innerText = data[0].member_state;
-  multiplier = multipliers[data[0].member_state];
-}
-
-async function updateState(){
-  if(currentRole !== "Admin"){
-    alert("Not authorized");
-    return;
+    if (error) {
+      document.getElementById("authMessage").innerText = error.message;
+    } else {
+      showDashboard(data.user);
+    }
   }
-  await supabase.from("settings").update({
-    member_state: stateSelect.value
-  }).eq("id",1);
-  loadState();
-}
 
-function calculateDDR(){
-  let base = (damage.value/100)/deaths.value;
-  let final = base * multiplier;
-  ddrResult.innerText = "Final DDR: " + final.toFixed(2);
-}
+  async function logout() {
+    await supabaseClient.auth.signOut();
+    document.getElementById("dashboard").style.display = "none";
+    document.getElementById("auth").style.display = "block";
+  }
 
-async function addLog(){
-  await supabase.from("logs").insert({
-    user_id: currentUser.id,
-    action: logInput.value
+  function showDashboard(user) {
+    document.getElementById("auth").style.display = "none";
+    document.getElementById("dashboard").style.display = "block";
+    document.getElementById("welcome").innerText =
+      "Logged in as: " + user.email;
+  }
+
+  function calculateDDR() {
+    const states = parseInt(
+      document.getElementById("memberStates").value
+    );
+
+    if (isNaN(states)) {
+      document.getElementById("ddrResult").innerText =
+        "Enter valid number.";
+      return;
+    }
+
+    // 🔥 Example DDR Formula (change this to your real one)
+    const ddr = states * 10;
+
+    document.getElementById("ddrResult").innerText =
+      "DDR Result: " + ddr;
+  }
+
+  // 🔥 Keep user logged in on refresh
+  supabaseClient.auth.getSession().then(({ data }) => {
+    if (data.session) {
+      showDashboard(data.session.user);
+    }
   });
-  logInput.value="";
-  loadLogs();
-}
-
-async function loadLogs(){
-  const { data } = await supabase.from("logs").select("*");
-  logs.innerHTML="";
-  data.forEach(l => {
-    logs.innerHTML += "<p>• "+l.action+"</p>";
-  });
-}
-
-async function logout(){
-  await supabase.auth.signOut();
-  location.reload();
-}
 </script>
 
 </body>
