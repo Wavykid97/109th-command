@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>109th Command Center</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body { background:#0f172a; color:white; font-family:Arial; padding:20px;}
+.card { background:#1e293b; padding:20px; margin-bottom:20px; border-radius:8px;}
+button { padding:8px 15px; background:#3b82f6; border:none; color:white; cursor:pointer;}
+input, select { padding:8px; margin:5px 0; width:100%;}
+</style>
+</head>
+<body>
+
+<h1>109th Division Command Center</h1>
+
+<div class="card" id="auth">
+<h3>Login / Register</h3>
+<input id="email" placeholder="Email">
+<input id="password" type="password" placeholder="Password">
+<button onclick="register()">Register</button>
+<button onclick="login()">Login</button>
+</div>
+
+<div id="dashboard" style="display:none;">
+
+<div class="card">
+<h3>Member State</h3>
+<p id="state"></p>
+<select id="stateSelect">
+<option>Critical</option>
+<option>Stable</option>
+<option>Prosperous</option>
+</select>
+<button onclick="updateState()">Update (Admin Only)</button>
+</div>
+
+<div class="card">
+<h3>DDR Calculator</h3>
+<input id="damage" placeholder="Damage">
+<input id="deaths" placeholder="Deaths">
+<button onclick="calculateDDR()">Calculate</button>
+<p id="ddrResult"></p>
+</div>
+
+<div class="card">
+<h3>Officer Logs</h3>
+<input id="logInput" placeholder="Enter action">
+<button onclick="addLog()">Submit</button>
+<div id="logs"></div>
+</div>
+
+<button onclick="logout()">Logout</button>
+</div>
+
+<script>
+const supabase = supabase.createClient(
+  "YOUR_PROJECT_URL",
+  "YOUR_ANON_KEY"
+);
+
+let currentUser;
+let currentRole = "Officer";
+let multiplier = 0.5;
+
+const multipliers = {
+  Critical: 0.5,
+  Stable: 0.65,
+  Prosperous: 0.75
+};
+
+async function register(){
+  const { data, error } = await supabase.auth.signUp({
+    email: email.value,
+    password: password.value
+  });
+  alert("Registered. Now login.");
+}
+
+async function login(){
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: email.value,
+    password: password.value
+  });
+  loadUser();
+}
+
+async function loadUser(){
+  const { data: { user } } = await supabase.auth.getUser();
+  currentUser = user;
+
+  document.getElementById("auth").style.display="none";
+  document.getElementById("dashboard").style.display="block";
+
+  const { data } = await supabase.from("users").select("*").eq("id", user.id);
+  if(data.length > 0) currentRole = data[0].role;
+
+  loadState();
+  loadLogs();
+}
+
+async function loadState(){
+  const { data } = await supabase.from("settings").select("*").eq("id",1);
+  document.getElementById("state").innerText = data[0].member_state;
+  multiplier = multipliers[data[0].member_state];
+}
+
+async function updateState(){
+  if(currentRole !== "Admin"){
+    alert("Not authorized");
+    return;
+  }
+  await supabase.from("settings").update({
+    member_state: stateSelect.value
+  }).eq("id",1);
+  loadState();
+}
+
+function calculateDDR(){
+  let base = (damage.value/100)/deaths.value;
+  let final = base * multiplier;
+  ddrResult.innerText = "Final DDR: " + final.toFixed(2);
+}
+
+async function addLog(){
+  await supabase.from("logs").insert({
+    user_id: currentUser.id,
+    action: logInput.value
+  });
+  logInput.value="";
+  loadLogs();
+}
+
+async function loadLogs(){
+  const { data } = await supabase.from("logs").select("*");
+  logs.innerHTML="";
+  data.forEach(l => {
+    logs.innerHTML += "<p>• "+l.action+"</p>";
+  });
+}
+
+async function logout(){
+  await supabase.auth.signOut();
+  location.reload();
+}
+</script>
+
+</body>
+</html>
