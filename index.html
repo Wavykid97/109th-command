@@ -74,7 +74,21 @@ async function register(){
     email: email.value,
     password: password.value
   });
-  alert("Registered. Now login.");
+
+  if(error){
+    alert(error.message);
+    return;
+  }
+
+  const user = data.user;
+
+  // Insert into public.users table
+  await supabase.from("users").insert({
+    id: user.id,
+    role: "Officer"
+  });
+
+  alert("Registered successfully. Now login.");
 }
 
 async function login(){
